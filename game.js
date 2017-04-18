@@ -3,8 +3,8 @@
     window.addEventListener("load",function() {
 
 	var Q = window.Q = Quintus()
-			.include("Sprites, Scenes, Input, 2D, Touch, UI")
-			.setup({ maximize: true }).touch();
+			.include("Sprites, Scenes, Input, 2D, UI")
+			.setup("myGame");
 
 	var KEY_NAMES = { LEFT: 37, RIGHT: 39, SPACE: 32,
 				UP: 38, A: 65, D: 68, W: 87, Q: 81};
@@ -13,11 +13,9 @@
 		37: "player1Left",
 		39: "player1Right",
 		38: "player1Up",
-		32: "player1Fire",
 		68: "player2Right",
 		65: "player2Left",
-		87: "player2Up",
-		81: "player2Fire"
+		87: "player2Up"
 	});
 
 	Q.gravityX = 0;
@@ -26,6 +24,10 @@
 	Q.SPRITE_SHIP = 1;
 	Q.SPRITE_BULLET = 2;
 	Q.SPRITE_ASTEROID = 4;
+
+	Q.PLAYER_ONE_COLOR = "#349B89";
+	Q.PLAYER_TWO_COLOR = "#EC7149";
+	Q.ASTEROID_COLOR = "#DCD8D6";
 
 	Q.component("reposition", {
 
@@ -37,11 +39,11 @@
 	  step: function(dt) {
 		var p = this.entity.p;
 		var maxSide = Math.sqrt(p.h * p.h  + p.w + p.w);
-		if(p.x > Q.width + maxSide) { p.x -= Q.width + maxSide }
-		if(p.x < -maxSide) { p.x += Q.width + maxSide }
+		if(p.x > Q.width + maxSide) { p.x -= Q.width + maxSide; }
+		if(p.x < -maxSide) { p.x += Q.width + maxSide; }
 
-		if(p.y > Q.height + maxSide) { p.y -= Q.height + maxSide }
-		if(p.y < -maxSide) { p.y += Q.height + maxSide }
+		if(p.y > Q.height + maxSide) { p.y -= Q.height + maxSide; }
+		if(p.y < -maxSide) { p.y += Q.height + maxSide; }
 	  }
 
 	});
@@ -81,8 +83,6 @@
 		});
 		this.add("2d, reposition");
 
-		Q.input.on(p.fire,this,"fire");
-
 		this.activationObject = new Q.Sprite({ x: p.startX, y: p.startY, w: 100, h: 100 });
 	  },
 
@@ -92,7 +92,7 @@
 		var dx =  Math.sin(p.angle * Math.PI / 180),
 			dy = -Math.cos(p.angle * Math.PI / 180);
 		this.stage.insert(
-		  new Q.Bullet({ x: this.c.points[0][0], 
+		  new Q.Bullet({ x: this.c.points[0][0],
 						 y: this.c.points[0][1],
 						 vx: dx * p.bulletSpeed,
 						 vy: dy * p.bulletSpeed,
@@ -112,7 +112,7 @@
 		if(!this.p.activated) {
 		  return this.checkActivation();
 		}
-		
+
 		this.p.steps++;
 		if(this.p.steps >= 15) {
 			this.fire();
@@ -123,7 +123,7 @@
 		p.angle += p.omega * dt;
 		p.omega *=  1 - 1 * dt;
 
-		if(Q.inputs[p.right]) { 
+		if(Q.inputs[p.right]) {
 		  p.omega += p.omegaDelta * dt;
 		  if(p.omega > p.maxOmega) { p.omega = p.maxOmega; }
 		} else if(Q.inputs[p.left]) {
@@ -149,7 +149,7 @@
 	  },
 
 	  reset: function() {
-		Q._extend(this.p,{ 
+		Q._extend(this.p,{
 		  x: this.p.startX,
 		  y: this.p.startY,
 		  vx: 0,
@@ -165,7 +165,7 @@
 	Q.Sprite.extend("Bullet",{
 	  init: function(p) {
 
-		this._super(p,{ 
+		this._super(p,{
 		  w:3,
 		  h:3,
 		  type: Q.SPRITE_BULLET,
@@ -179,44 +179,20 @@
 	  collision: function(col) {
 		var objP = col.obj.p;
 		var score;
-		if(objP.size > 30) { 
-			this.stage.insert(new Q.Asteroid({ 
-				x: objP.x,
-				y: objP.y,
-				size: objP.size * 2 / 3,
-				startAngle: objP.startAngle + 90,
-				color: this.p.color
-			}));
-			this.stage.insert(new Q.Asteroid({ 
-				x: objP.x,
-				y: objP.y,
-				size: objP.size * 2 / 3,
-				startAngle: objP.startAngle - 90,
-				color: this.p.color
-			}));
-			col.obj.destroy();
-			
-			if(this.p.color === "#ff9999") {
-				score = Q.state.get("playerOnePercentage") + 2;
+		if(objP.color === Q.ASTEROID_COLOR) {
+			if(this.p.color === Q.PLAYER_ONE_COLOR) {
+				score = Q.state.get("playerOnePercentage") + 1;
 				Q.state.set("playerOnePercentage", score);
 			}
 			else {
-				score = Q.state.get("playerTwoPercentage") + 2;
+				score = Q.state.get("playerTwoPercentage") + 1;
 				Q.state.set("playerTwoPercentage", score);
 			}
-
-			if(objP.color === "#ff9999") {
-				score = Q.state.get("playerOnePercentage") - 1;
-				Q.state.set("playerOnePercentage", score);
-			}
-			else if(objP.color === "#66ffff") {
-				score = Q.state.get("playerTwoPercentage") - 1;
-				Q.state.set("playerTwoPercentage", score);
-			}
+			objP.color = this.p.color;
 		}
 		else {
 			if(objP.color !== this.p.color) {
-				if(this.p.color === "#ff9999") {
+				if(this.p.color === Q.PLAYER_ONE_COLOR) {
 					score = Q.state.get("playerOnePercentage") + 1;
 					Q.state.set("playerOnePercentage", score);
 					score = Q.state.get("playerTwoPercentage") - 1;
@@ -264,7 +240,7 @@
 		  collisionMask: Q.SPRITE_SHIP,
 		  omega: Math.random() * 100,
 		  skipCollide: true,
-		  color: "#FFF"
+		  color: Q.ASTEROID_COLOR
 		});
 		this.add("2d, reposition");
 
@@ -273,7 +249,7 @@
 
 	  collision: function(col) {
 		if(col.obj.isA("Ship")) {
-		  col.obj.reset(); 
+		  col.obj.reset();
 		}
 	  },
 
@@ -333,7 +309,7 @@
 	 }
 	});
 
-	Q.UI.Text.extend("Score",{ 
+	Q.UI.Text.extend("Score",{
 		init: function(p) {
 			this._super({
 			  label: "P1: 0% P2: 0%",
@@ -346,7 +322,6 @@
 		},
 
 		score: function() {
-			console.log(Q("Asteroid").length);
 			var p1 = Q.state.get("playerOnePercentage") / Q("Asteroid").length;
 			var p2 = Q.state.get("playerTwoPercentage") / Q("Asteroid").length;
 			this.p.label = "P1: " + p1.toFixed(2)*100 + "% P2: " + p2.toFixed(2)*100 + "%";
@@ -354,22 +329,26 @@
 	});
 
 	Q.scene("level1",function(stage) {
-	  Q.state.reset({ playerOnePercentage: 0, playerTwoPercentage: 0 });	
-	
-	  var player = stage.insert(new Q.Ship({ startX: Q.width/4, startY: Q.height/2, 
-		  left: "player1Left", right: "player1Right", up: "player1Up", fire: "player1Fire",
-		  color: "#ff9999"}));
+	  Q.state.reset({ playerOnePercentage: 0, playerTwoPercentage: 0 });
+
+	  var player = stage.insert(new Q.Ship({ startX: Q.width/4, startY: Q.height/2,
+		  left: "player1Left", right: "player1Right", up: "player1Up",
+		  color: Q.PLAYER_ONE_COLOR}));
 	  var player2 = stage.insert(new Q.Ship({ startX: Q.width*(3/4), startY: Q.height/2,
-		  left: "player2Left", right: "player2Right", up: "player2Up", fire: "player2Fire",
-		  color: "#66ffff"}));
-	  
+		  left: "player2Left", right: "player2Right", up: "player2Up",
+		  color: Q.PLAYER_TWO_COLOR}));
+
 	  stage.insert(new Q.Asteroid({ size: 60 }));
 	  stage.insert(new Q.Asteroid({ size: 60 }));
-	  stage.insert(new Q.Asteroid({ size: 60 }));
-	  stage.insert(new Q.Asteroid({ size: 60 }));
-	  stage.insert(new Q.Asteroid({ size: 60 }));
-	  stage.insert(new Q.Asteroid({ size: 60 }));
-	  
+	  stage.insert(new Q.Asteroid({ size: 50 }));
+	  stage.insert(new Q.Asteroid({ size: 50 }));
+	  stage.insert(new Q.Asteroid({ size: 40 }));
+	  stage.insert(new Q.Asteroid({ size: 40 }));
+	  stage.insert(new Q.Asteroid({ size: 30 }));
+	  stage.insert(new Q.Asteroid({ size: 30 }));
+	  stage.insert(new Q.Asteroid({ size: 20 }));
+	  stage.insert(new Q.Asteroid({ size: 20 }));
+
 	  var scoreContainer = stage.insert(new Q.UI.Container({
 		x: Q.width/2, y: Q.height/10, fill: "rgba(255,255,255,0.5)"
 		}));
@@ -377,8 +356,11 @@
 	  scoreContainer.fit(10,200);
 
 	  stage.on("step",function() {
-		if(Q("Asteroid").length == 0 && !Q.stage(1)) { 
-		  Q.stageScene("endGame",1, { label: "You Win!" }); 
+		if(Q.state.get("playerOnePercentage") === Q("Asteroid").length) {
+		  Q.stageScene("endGame",1, { label: "Player One Win!" });
+		}
+		if(Q.state.get("playerTwoPercentage") === Q("Asteroid").length) {
+		  Q.stageScene("endGame",1, { label: "Player Two Win!" });
 		}
 	  });
 	});
@@ -389,8 +371,8 @@
 		}));
 
 		var button = container.insert(new Q.UI.Button({ x: 0, y: 0, fill: "#CCCCCC",
-													   label: "Play Again" }))         
-		var label = container.insert(new Q.UI.Text({x:10, y: -10 - button.p.h, 
+													   label: "Play Again" }));
+		var label = container.insert(new Q.UI.Text({x:10, y: -10 - button.p.h,
 									 label: stage.options.label }));
 		// When the button is clicked, clear all the stages
 		// and restart the game.
